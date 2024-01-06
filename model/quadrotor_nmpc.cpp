@@ -137,7 +137,6 @@ int main(int argc, char * const argv[ ])
   ocp.subjectTo(tauy_min <= tau_y <= tauy_max);
   ocp.subjectTo(tauz_min <= tau_z <= tauz_max);
 
-  ocp.setNOD(10);
   //
   // Export the code:
   //
