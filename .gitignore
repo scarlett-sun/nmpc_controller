@@ -2,5 +2,4 @@ model/CMakeCache.txt
 model/CMakeFiles/
 model/Makefile
 model/cmake_install.cmake
-model/quadrotor_nmpc/
 model/quadrotor_nmpc_codegen
