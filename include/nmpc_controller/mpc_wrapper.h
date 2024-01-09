@@ -19,7 +19,6 @@ static constexpr int kOdSize = ACADO_NOD;     // number of online data, 0，需�
 ACADOvariables acadoVariables;
 ACADOworkspace acadoWorkspace;
 
-
 class MpcWrapper
 {
  public:
@@ -38,28 +37,21 @@ class MpcWrapper
     const float state_cost_scaling = 0.0, const float input_cost_scaling = 0.0);//用权重矩阵构造，且便于调参
   
   /*设置约束*/
-  bool setLimits(float min_thrust, float max_thrust, float max_taux, float max_tauy, float max_tauz);
+  bool setLimits(const float& min_thrust, const float& max_thrust, const float& max_taux, const float& max_tauy, const float& max_tauz);
   
 
   bool initializeAcadoVariables();
 
   /*设置初始状态*/
-  bool setInitialState(const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> est_state){
-    // Check if estimated and reference quaternion live in sthe same hemisphere.
-    // 以后再检查吧
+  bool setInitialState(const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> est_state){
     acado_initial_state_ = est_state.template cast<float>();
-    // if(acado_initial_state_.segment(3,4).dot(
-    //   Eigen::Vector4f(acado_reference_states_.block(3,0,4,1)))<(T)0.0)
-    // {
-    //   acado_initial_state_.segment(3,4) = -acado_initial_state_.segment(3,4);
-    // }
   }
 
   /*设置参考位姿（一个轨迹点）*/
   bool setReferencePose(const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> state);
   
   /*设置参考轨迹（一系列轨迹点）*/
-  bool setTrajectory(
+  bool setReferences(
     const Eigen::Ref<const Eigen::Matrix<float, kStateSize, kSamples+1>> states,
     const Eigen::Ref<const Eigen::Matrix<float, kInputSize, kSamples+1>> inputs);
 
@@ -105,9 +97,6 @@ class MpcWrapper
   Eigen::Map<Eigen::Matrix<float, kInputSize, kSamples, Eigen::ColMajor>>
     acado_inputs_{acadoVariables.u};//4*20
 
-  // Eigen::Map<Eigen::Matrix<float, kOdSize, kSamples+1, Eigen::ColMajor>>
-  //   acado_online_data_{acadoVariables.od};//0,currently not needed
-
   Eigen::Map<Eigen::Matrix<float, kRefSize, kRefSize * kSamples>>
     acado_W_{acadoVariables.W};//16*320
 
@@ -120,25 +109,20 @@ class MpcWrapper
   Eigen::Map<Eigen::Matrix<float, 4, kSamples, Eigen::ColMajor>>
     acado_upper_bounds_{acadoVariables.ubValues};//4*20
 
-  //以上是mpc_wrapper中对应acadoVariables的数据成员
-  //共享内存，任何一方的修改会影响另一方的数值
-
   Eigen::Matrix<float, kRefSize, kRefSize> W_ = (Eigen::Matrix<float, kRefSize, 1>() <<
+    10 * Eigen::Matrix<float, 3, 1>::Ones(),//position
+    10 * Eigen::Matrix<float, 3, 1>::Ones(),//attitude
+    10 * Eigen::Matrix<float, 3, 1>::Ones(),//velocity
+    10 * Eigen::Matrix<float, 3, 1>::Ones(),//angular velocity
     10 * Eigen::Matrix<float, 3, 1>::Ones(),
-    100 * Eigen::Matrix<float, 4, 1>::Ones(),
-    10 * Eigen::Matrix<float, 3, 1>::Ones(),
-    Eigen::Matrix<float, 2, 1>::Zero(),
-    1, 10, 10, 1).finished().asDiagonal();//初始化权重矩阵，这里的权重数值可能得改
+    10//thust
+    ).finished().asDiagonal();//初始化权重矩阵，这里的权重数值可能得改
 
   Eigen::Matrix<float, kEndRefSize, kEndRefSize> WN_ =
     W_.block(0, 0, kEndRefSize, kEndRefSize);
   
-  //W_和WN_是给单个state用的，而acado_W_和acado_WN_是给N个state用的
-
   bool acado_is_prepared_{false};
   const float dt_{0.1};//this value should be read from mpc model, cannot be set randomly
 };
-
-
 
 } // namespace MPC

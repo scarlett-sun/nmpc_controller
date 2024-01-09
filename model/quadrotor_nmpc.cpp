@@ -27,20 +27,25 @@ int main(int argc, char * const argv[ ])
 //   DifferentialState		f1, f2, f3, f4;//the force produced by the individual propeller
 //   Control				f1_dot, f2_dot, f3_dot, f4_dot;
   //先把基础的功能做出来再优化吧
-  Control				thrust, tau_x, tau_y, tau_z;//in body frame
+  Control				tau_x, tau_y, tau_z, thrust;//in body frame
   DifferentialEquation  f;//state equation
   Function              h, hN;
 
   // Parameters with exemplary values. These are set/overwritten at runtime.
+/*以下数值需要在整个功能包里统一*/
   const double t_start = 0.0;     // Initial time [s]
   const double t_end = 2.0;       // Time horizon [s]
   const double dt = 0.1;          // Discretization time [s]
   const int N = round(t_end/dt);  // Number of nodes
+
   const double g_z = 9.8066;      // Gravity is everywhere [m/s^2]
   const double mass=1.5;//运行时能否改变这些数据，例程写的是可以
   const double Jxx = 1;
   const double Jyy = 1;
   const double Jzz = 1;
+/*以上数值需要在整个功能包里统一*/
+
+  //bounds are set online
   const double thrust_min = 0;         // Minimal thrust [N]
   const double thrust_max = 25;        // Maximal thrust [N]
   const double taux_min = 0;         // Minimal taux [Nm]
@@ -72,8 +77,8 @@ int main(int argc, char * const argv[ ])
   h << p_x << p_y << p_z
 	<< phi << theta << psi
 	<< v_x << v_y << v_z
-    << w_x << w_y << w_z
-	<< thrust << tau_x << tau_y << tau_z;
+  << w_x << w_y << w_z
+  << tau_x << tau_y << tau_z << thrust;
   // End cost vector consists of all states (no inputs at last state).
 
   hN << p_x << p_y << p_z
@@ -95,10 +100,10 @@ int main(int argc, char * const argv[ ])
   Q(9,9) = 10;   // w_x
   Q(10,10) = 10;  // w_y
   Q(11,11) = 10;  // w_z
-  Q(12,12) = 1;   // thrust
-  Q(13,13) = 1;   // tau_x
-  Q(14,14) = 1;   // tau_y
-  Q(15,15) = 1;   // tau_z
+  Q(12,12) = 1;   // tau_x
+  Q(13,13) = 1;   // tau_y
+  Q(14,14) = 1;   // tau_z
+  Q(15,15) = 1;   // thrust
 
   DMatrix QN(h.getDim(), h.getDim());
   QN.setIdentity();
@@ -132,10 +137,10 @@ int main(int argc, char * const argv[ ])
   ocp.subjectTo( f );
 
   // Add constraints
-  ocp.subjectTo(thrust_min <= thrust <= thrust_max);
   ocp.subjectTo(taux_min <= tau_x <= taux_max);
   ocp.subjectTo(tauy_min <= tau_y <= tauy_max);
   ocp.subjectTo(tauz_min <= tau_z <= tauz_max);
+  ocp.subjectTo(thrust_min <= thrust <= thrust_max);
 
   //
   // Export the code:

@@ -1,48 +1,68 @@
-/*
- Copyright (c) 2015, Mina Kamel, ASL, ETH Zurich, Switzerland
-
- You can contact the author at <mina.kamel@mavt.ethz.ch>
-
- All rights reserved.
-
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions are met:
- * Redistributions of source code must retain the above copyright
- notice, this list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright
- notice, this list of conditions and the following disclaimer in the
- documentation and/or other materials provided with the distribution.
- * Neither the name of ETHZ-ASL nor the
- names of its contributors may be used to endorse or promote products
- derived from this software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL ETHZ-ASL BE LIABLE FOR ANY
- DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-#ifndef INCLUDE_MAV_NONLINEAR_MPC_NONLINEAR_MPC_H_
-#define INCLUDE_MAV_NONLINEAR_MPC_NONLINEAR_MPC_H_
+#ifndef INCLUDE_NMPC_CONTROLLER_NONLINEAR_MPC_H_
+#define INCLUDE_NMPC_CONTROLLER_NONLINEAR_MPC_H_
 
 #include <ros/ros.h>
 #include <Eigen/Eigen>
 #include <mav_msgs/conversions.h>
 #include <mav_msgs/eigen_mav_msgs.h>
-#include <stdio.h>
-#include <mav_control_interface/mpc_queue.h>
 #include "acado_common.h"
-#include "acado_auxiliary_functions.h"
 #include <std_srvs/Empty.h>
-#include <lapacke.h>
+
+#include <nmpc_controller/mpc_queue.h>
+#include "nmpc_controller/mpc_wrapper.h"
+#include "nmpc_controller/common.h"
 
 namespace mav_control {
+
+// Default values for the lee position controller and the Asctec Firefly.
+static const Eigen::Vector3d kDefaultPositionWeights = Eigen::Vector3d(6, 6, 6);
+static const Eigen::Vector3d kDefaultVelocityWeights = Eigen::Vector3d(4.7, 4.7, 4.7);
+static const Eigen::Vector3d kDefaultAttitudeWeights = Eigen::Vector3d(3, 3, 0.035);
+static const Eigen::Vector3d kDefaultAngularRateWeights = Eigen::Vector3d(0.52, 0.52, 0.025);
+static const float kDefaultThrustWeight = 1;
+static const Eigen::Vector3d kDefaultTauWeight = Eigen::Vector3d(0.52, 0.52, 0.025);
+static const float kDefaultMinThrust = 0.0;
+static const float kDefaultMaxThrust = 30.0;
+static const Eigen::Vector3d kDefaultMaxTau = Eigen::Vector3d(3,3,3);
+static const float kDefaultSamplingTime = 0.1;
+static const float kDefaultPredictionSamplingTime = 2.0;
+
+class NonlinearMpcControllerParameters {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  NonlinearMpcControllerParameters()
+      : q_position_(kDefaultPositionWeights),
+        q_velocity_(kDefaultVelocityWeights),
+        q_attitude_(kDefaultAttitudeWeights),
+        q_angular_rate_(kDefaultAngularRateWeights),
+        r_thrust_(kDefaultThrustWeight),
+        r_tau_(kDefaultTauWeight),
+        min_thrust_(kDefaultMinThrust),
+        max_thrust_(kDefaultMaxThrust),
+        max_tau_(kDefaultMaxTau),
+        sampling_time_(kDefaultSamplingTime),
+        prediction_sampling_time_(kDefaultPredictionSamplingTime) {
+    calculateAllocationMatrix(rotor_configuration_, &allocation_matrix_);
+  }
+
+  Eigen::Matrix4Xd allocation_matrix_;
+
+  Eigen::Vector3d q_position_;
+  Eigen::Vector3d q_velocity_;
+  Eigen::Vector3d q_attitude_;
+  Eigen::Vector3d q_angular_rate_;
+  float r_thrust_;
+  Eigen::Vector3d r_tau_;
+
+  float min_thrust_;
+  float max_thrust_;
+  Eigen::Vector3d max_tau_;
+  
+  float sampling_time_;
+  float prediction_sampling_time_;
+
+  RotorConfiguration rotor_configuration_;
+};  
 
 class NonlinearMpcController
 {
@@ -50,75 +70,61 @@ class NonlinearMpcController
   NonlinearMpcController();
   ~NonlinearMpcController();
 
-  // // get reference and predicted state
-  // bool getCurrentReference(mav_msgs::EigenTrajectoryPoint* reference) const;
-  // bool getCurrentReference(mav_msgs::EigenTrajectoryPointDeque* reference) const;
-  // bool getPredictedState(mav_msgs::EigenTrajectoryPointDeque* predicted_state) const;
+  NonlinearMpcControllerParameters controller_parameters_;
+  VehicleParameters vehicle_parameters_;
 
-  // set odom and commands
-  void setLimits();
-  void setWeights();
-  void setEstimatedState();
-  void setReference();
-  void updateControlCommand();
+  void setOdometry(const EigenOdometry& odometry);
+  void updateControlCommand();//for controller node
 
+  void setCommandTrajectoryPoint(const mav_msgs::EigenTrajectoryPoint& command_trajectory);//for controller node
+  void setCommandTrajectory(const mav_msgs::EigenTrajectoryPointDeque& command_trajectory);//for controller node
+  
+  void getControlCommand(const Eigen::Vector4d& torque_thrust){torque_thrust = command_torque_thrust_;}
+  
+  bool controller_active_{false};
+  void CalculateRotorVelocities(const Eigen::Vector4d& torque_thrust, Eigen::VectorXd* rotor_velocities) const; 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
- private:
-  MpcWrapper mpc_wrapper_;
-  std::thread preparation_thread_;
-  // constants
-  static constexpr double kGravity = 9.8066;
 
-  bool solve_from_scratch_;
-  Eigen::Matrix<T, kStateSize, 1> est_state_;
-  Eigen::Matrix<T, kStateSize, kSamples + 1> reference_states_;
-  Eigen::Matrix<T, kInputSize, kSamples + 1> reference_inputs_;
-  Eigen::Matrix<T, kStateSize, kSamples + 1> predicted_states_;
-  Eigen::Matrix<T, kInputSize, kSamples> predicted_inputs_;
+ private:
+  MpcWrapper mpc_wrapper_;//000000000000000000000
+  std::thread preparation_thread_;//00000000000000000
+  MPCQueue mpc_queue_;//store trajectory into a deque
+  mav_msgs::EigenTrajectoryPointDeque command_trajectory_;
+
+  bool solve_from_scratch_{true};//0000000000000000000
+  Eigen::Matrix<float, kStateSize, 1> est_state_;//00000000000000000
+
+  Eigen::Matrix<float, kStateSize, kSamples + 1> reference_states_;//000000000000000000
+  Eigen::Matrix<float, kInputSize, kSamples + 1> reference_inputs_;//000000000000000000
+
+  //direct computed results:predicted inputs and predicted_states
+  Eigen::Matrix<float, kStateSize, kSamples + 1> predicted_states_;//000000000000000000
+  Eigen::Matrix<float, kInputSize, kSamples> predicted_inputs_;//000000000000000000000
+  
+  // commands
+  Eigen::Vector4d command_torque_thrust_;//predicted_inputs
 
   // sampling time parameters
   void initializeParameters();
-  bool initialized_parameters_;
+  bool initialized_parameters_{false};
 
-  // sampling time parameters
-  double sampling_time_;
-  double prediction_sampling_time_;
-
-  // system model parameters
-  double mass_;
-  double Jxx_;
-  double Jyy_;
-  double Jzz_;
-
-  // control input limits
-  double taux_limit_;
-  double tauy_limit_;
-  double tauz_limit_;
-  double thrust_min_;
-  double thrust_max_;
-
-  // reference queue
-  MPCQueue mpc_queue_;
-  Vector3dDeque position_ref_, velocity_ref_, acceleration_ref_;
-  Vector3dDeque attitude_ref_, angular_velocity_ref_, angular_acceleration_ref_;
-
-  // commands
-  Eigen::Vector4d command_torque_thrust_;
-
-  // debug info
-  bool verbose_;
-  double solve_time_average_;
-
-  // most recent odometry information
-  mav_msgs::EigenOdometry odometry_;
-  bool received_first_odometry_;
-
-  // solve continuous time Riccati equation
-  Eigen::MatrixXd solveCARE(Eigen::MatrixXd Q, Eigen::MatrixXd R);
+  // controller weights
+  Eigen::Matrix<float, kCostSize, kCostSize> Q_;//need to be initialized in initializeParameters
+  Eigen::Matrix<float, kInputSize, kInputSize> R_;//need to be initialized in initializeParameters
+  
+  // reference states queue
+  Vector3dDeque position_ref_, velocity_ref_, acc_ref_;
+  std::deque<float> yaw_ref_, yaw_rate_ref_, yaw_acc_ref_;
 
   void preparationThread();
+  void setCommandFromPredictedResults();
+
+  void setLimitsAndWeights();
+  bool limits_weights_set_successful_{false};
+  void setReferenceStates();
+  void setReferenceInputs();
 };
 
 }
 
-#endif /* INCLUDE_MAV_NONLINEAR_MPC_NONLINEAR_MPC_H_ */
+#endif /* INCLUDE_NMPC_CONTROLLER_NONLINEAR_MPC_H_ */

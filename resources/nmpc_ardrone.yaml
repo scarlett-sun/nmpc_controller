@@ -1,0 +1,19 @@
+# weights for states
+q_position: {x: 6, y: 6, z: 6}
+q_velocity: {x: 6, y: 6, z: 6}
+q_attitude: {x: 6, y: 6, z: 6}
+q_angular_rate: {x: 6, y: 6, z: 6}
+
+# weights for inputs
+r_thrust: 6
+r_tau: {x: 6, y: 6, z: 6}
+
+# limits
+max_thrust: 30 # [N]
+min_thrust: 0 # [N]
+max_tau: {x: 10, y: 10, z: 10} # [Nm]
+
+# time
+controller_frequency: 100 # [Hz]
+sampling_time: 0.01 # [s]
+prediction_sampling_time: 0.1 # [s]

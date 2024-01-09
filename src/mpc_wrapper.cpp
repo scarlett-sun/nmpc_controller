@@ -4,7 +4,7 @@
 namespace mav_control {
 
 // Default Constructor.
-MpcWrapper<float>::MpcWrapper()
+MpcWrapper::MpcWrapper()
 {
   // Clear solver memory.
   memset(&acadoWorkspace, 0, sizeof( acadoWorkspace ));
@@ -23,7 +23,7 @@ MpcWrapper<float>::MpcWrapper()
 }
 
 // Constructor with cost matrices as arguments.
-MpcWrapper<float>::MpcWrapper(
+MpcWrapper::MpcWrapper(
   const Eigen::Ref<const Eigen::Matrix<float, kCostSize, kCostSize>> Q,
   const Eigen::Ref<const Eigen::Matrix<float, kInputSize, kInputSize>> R)
 {
@@ -32,7 +32,7 @@ MpcWrapper<float>::MpcWrapper(
 }
 
 // Set cost matrices with optional scaling.
-bool MpcWrapper<float>::setCosts(
+bool MpcWrapper::setCosts(
   const Eigen::Ref<const Eigen::Matrix<float, kCostSize, kCostSize>> Q,
   const Eigen::Ref<const Eigen::Matrix<float, kInputSize, kInputSize>> R,
   const float state_cost_scaling, const float input_cost_scaling)
@@ -67,7 +67,7 @@ bool MpcWrapper<float>::setCosts(
 }
 
 // Set the input limits.
-bool MpcWrapper<float>::setLimits(float min_thrust, float max_thrust, float max_taux, float max_tauy, float max_tauz)
+bool MpcWrapper::setLimits(const float& min_thrust, const float& max_thrust, const float& max_taux, const float& max_tauy, const float& max_tauz)
 {
   if(min_thrust <= 0.0 || min_thrust > max_thrust)
   {
@@ -102,10 +102,8 @@ bool MpcWrapper<float>::setLimits(float min_thrust, float max_thrust, float max_
   // Set input boundaries.
   Eigen::Matrix<float, 4, 1> lower_bounds = Eigen::Matrix<float, 4, 1>::Zero();
   Eigen::Matrix<float, 4, 1> upper_bounds = Eigen::Matrix<float, 4, 1>::Zero();
-  lower_bounds << min_thrust,
-    -max_taux, -max_tauy, -max_tauz;
-  upper_bounds << max_thrust,
-    max_taux, max_tauy, max_tauz;
+  lower_bounds << -max_taux, -max_tauy, -max_tauz, min_thrust;
+  upper_bounds <<  max_taux,  max_tauy,  max_tauz, max_thrust;
 
   acado_lower_bounds_ =
     lower_bounds.replicate(1, kSamples).template cast<float>();
@@ -115,7 +113,7 @@ bool MpcWrapper<float>::setLimits(float min_thrust, float max_thrust, float max_
   return true;
 }
 
-bool MpcWrapper<float>::initializeAcadoVariables(){
+bool MpcWrapper::initializeAcadoVariables(){
   // Initialize states x and xN and input u.
   acado_initial_state_.setZero();
   acado_states_.setZero();
@@ -137,7 +135,7 @@ bool MpcWrapper<float>::initializeAcadoVariables(){
 }
 
 // Set a reference pose.
-bool MpcWrapper<float>::setReferencePose(
+bool MpcWrapper::setReferencePose(
   const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> state)
 {
   acado_reference_states_.block(0, 0, kStateSize, kSamples) =
@@ -160,7 +158,7 @@ bool MpcWrapper<float>::setReferencePose(
 }
 
 // Set a reference trajectory.
-bool MpcWrapper<float>::setTrajectory(
+bool MpcWrapper::setReferences(
   const Eigen::Ref<const Eigen::Matrix<float, kStateSize, kSamples+1>> states,
   const Eigen::Ref<const Eigen::Matrix<float, kInputSize, kSamples+1>> inputs)
 {
@@ -185,19 +183,19 @@ bool MpcWrapper<float>::setTrajectory(
 }
 
 // Reset states and inputs and calculate new solution.
-bool MpcWrapper<float>::solve(
+bool MpcWrapper::solve(
   const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> state)
 {
   acado_states_ = state.replicate(1, kSamples+1).template cast<float>();
-
-  acado_inputs_ = kHoverInput_.replicate(1, kSamples);
+  acado_inputs_.setZero();
+  // acado_inputs_ = kHoverInput_.replicate(1, kSamples);
 
   return update(state);
 }
 
 
 // Calculate new solution from last known solution.
-bool MpcWrapper<float>::update(
+bool MpcWrapper::update(
   const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> state)
 {
   if(!acado_is_prepared_)
@@ -219,7 +217,7 @@ bool MpcWrapper<float>::update(
 
 // Prepare the solver.
 // Must be triggered between iterations if not done in the update function.S
-bool MpcWrapper<float>::prepare()
+bool MpcWrapper::prepare()
 {
   acado_preparationStep();
   acado_is_prepared_ = true;
@@ -227,28 +225,28 @@ bool MpcWrapper<float>::prepare()
 }
 
 // Get a specific state.
-void MpcWrapper<float>::getState(const int node_index,
+void MpcWrapper::getState(const int node_index,
     Eigen::Ref<Eigen::Matrix<float, kStateSize, 1>> return_state)
 {
   return_state = acado_states_.col(node_index).cast<float>();
 }
 
 // Get all states.
-void MpcWrapper<float>::getStates(
+void MpcWrapper::getStates(
     Eigen::Ref<Eigen::Matrix<float, kStateSize, kSamples+1>> return_states)
 {
   return_states = acado_states_.cast<float>();
 }
 
 // Get a specific input.
-void MpcWrapper<float>::getInput(const int node_index,
+void MpcWrapper::getInput(const int node_index,
     Eigen::Ref<Eigen::Matrix<float, kInputSize, 1>> return_input)
 {
   return_input = acado_inputs_.col(node_index).cast<float>();
 }
 
 // Get all inputs.
-void MpcWrapper<float>::getInputs(
+void MpcWrapper::getInputs(
     Eigen::Ref<Eigen::Matrix<float, kInputSize, kSamples>> return_inputs)
 {
   return_inputs = acado_inputs_.cast<float>();
