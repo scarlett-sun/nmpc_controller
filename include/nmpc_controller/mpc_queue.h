@@ -12,7 +12,7 @@
 
 namespace mav_control {
 
-typedef std::deque<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > Vector3dDeque;
+typedef std::deque<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > Vector3fDeque;
 
 class MPCQueue
 {
@@ -33,14 +33,14 @@ class MPCQueue
 
   void insertReferenceTrajectory(const mav_msgs::EigenTrajectoryPointDeque& queue);
 
-  void getQueue(Vector3dDeque& position_reference, Vector3dDeque& velocity_reference,
-                        Vector3dDeque& acceleration_reference, std::deque<float>& yaw_reference,
+  void getQueue(Vector3fDeque& position_reference, Vector3fDeque& velocity_reference,
+                        Vector3fDeque& acceleration_reference, std::deque<float>& yaw_reference,
                         std::deque<float>& yaw_rate_reference,std::deque<float>& yaw_acc_reference);
 
   void updateQueue();
 
   bool empty() const { return current_queue_size_ == 0; }
-  int getCurrentQueueSize() const {return current_queue_size_};
+  int getCurrentQueueSize() const {return current_queue_size_;}
 
  private:
   int minimum_queue_size_;
@@ -53,9 +53,9 @@ class MPCQueue
   float queue_dt_;
 
   //state reference
-  Vector3dDeque position_reference_;//完整的插值后的，间隔为0.1s的trajectory
-  Vector3dDeque velocity_reference_;
-  Vector3dDeque acceleration_reference_;
+  Vector3fDeque position_reference_;//完整的插值后的，间隔为0.1s的trajectory
+  Vector3fDeque velocity_reference_;
+  Vector3fDeque acceleration_reference_;
   std::deque<float> yaw_reference_;
   std::deque<float> yaw_rate_reference_;
   std::deque<float> yaw_acc_reference_;
@@ -73,6 +73,7 @@ class MPCQueue
   //interpolate the reference queue to the controller update rate
   void linearInterpolateTrajectory(const mav_msgs::EigenTrajectoryPointDeque& input_queue,  mav_msgs::EigenTrajectoryPointDeque& output_queue);
 
+  void eraseOriginalReference(const size_t& start_index);
 
   void printQueue();
 };

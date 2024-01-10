@@ -40,15 +40,15 @@ class MpcWrapper
   bool setLimits(const float& min_thrust, const float& max_thrust, const float& max_taux, const float& max_tauy, const float& max_tauz);
   
 
-  bool initializeAcadoVariables();
+  void initializeAcadoVariables();
 
   /*设置初始状态*/
-  bool setInitialState(const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> est_state){
+  void setInitialState(const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> est_state){
     acado_initial_state_ = est_state.template cast<float>();
   }
 
-  /*设置参考位姿（一个轨迹点）*/
-  bool setReferencePose(const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> state);
+  // /*设置参考位姿（一个轨迹点）*/
+  // bool setReferencePose(const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> state);
   
   /*设置参考轨迹（一系列轨迹点）*/
   bool setReferences(

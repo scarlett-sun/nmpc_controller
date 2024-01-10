@@ -113,7 +113,7 @@ bool MpcWrapper::setLimits(const float& min_thrust, const float& max_thrust, con
   return true;
 }
 
-bool MpcWrapper::initializeAcadoVariables(){
+void MpcWrapper::initializeAcadoVariables(){
   // Initialize states x and xN and input u.
   acado_initial_state_.setZero();
   acado_states_.setZero();
@@ -126,7 +126,7 @@ bool MpcWrapper::initializeAcadoVariables(){
   // Initialize weight
   W_.setZero();
   WN_.setZero();
-  acado_W_ = W_;
+  acado_W_ = W_.replicate(1, kSamples).template cast<float>();
   acado_W_end_ = WN_;
 
   // Initializa bounds
@@ -134,28 +134,28 @@ bool MpcWrapper::initializeAcadoVariables(){
   acado_upper_bounds_.setZero();
 }
 
-// Set a reference pose.
-bool MpcWrapper::setReferencePose(
-  const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> state)
-{
-  acado_reference_states_.block(0, 0, kStateSize, kSamples) =
-    state.replicate(1, kSamples).template cast<float>();
+// // Set a reference pose.
+// bool MpcWrapper::setReferencePose(
+//   const Eigen::Ref<const Eigen::Matrix<float, kStateSize, 1>> state)
+// {
+//   acado_reference_states_.block(0, 0, kStateSize, kSamples) =
+//     state.replicate(1, kSamples).template cast<float>();
 
-  acado_reference_states_.block(kStateSize, 0, kCostSize-kStateSize, kSamples) =
-    Eigen::Matrix<float, kCostSize-kStateSize, kSamples>::Zero();
+//   acado_reference_states_.block(kStateSize, 0, kCostSize-kStateSize, kSamples) =
+//     Eigen::Matrix<float, kCostSize-kStateSize, kSamples>::Zero();
 
-  acado_reference_states_.block(kCostSize, 0, kInputSize, kSamples) =
-    kHoverInput_.replicate(1, kSamples);
+//   acado_reference_states_.block(kCostSize, 0, kInputSize, kSamples) =
+//     kHoverInput_.replicate(1, kSamples);
 
-  acado_reference_end_state_.segment(0, kStateSize) =
-    state.template cast<float>();
+//   acado_reference_end_state_.segment(0, kStateSize) =
+//     state.template cast<float>();
 
-  acado_reference_end_state_.segment(kStateSize, kCostSize-kStateSize) =
-    Eigen::Matrix<float, kCostSize-kStateSize, 1>::Zero();
+//   acado_reference_end_state_.segment(kStateSize, kCostSize-kStateSize) =
+//     Eigen::Matrix<float, kCostSize-kStateSize, 1>::Zero();
 
-  acado_initializeNodesByForwardSimulation();
-  return true;
-}
+//   acado_initializeNodesByForwardSimulation();
+//   return true;
+// }
 
 // Set a reference trajectory.
 bool MpcWrapper::setReferences(

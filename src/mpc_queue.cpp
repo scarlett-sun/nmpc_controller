@@ -134,9 +134,9 @@ void MPCQueue::insertReferenceTrajectory(const mav_msgs::EigenTrajectoryPointDeq
     }
 
     for (auto it = interpolated_queue.begin(); it != interpolated_queue.end(); ++it) {
-      position_reference_.push_back(it->position_W);
-      velocity_reference_.push_back(it->velocity_W);
-      acceleration_reference_.push_back(it->acceleration_W);
+      position_reference_.push_back(it->position_W.cast<float>());
+      velocity_reference_.push_back(it->velocity_W.cast<float>());
+      acceleration_reference_.push_back(it->acceleration_W.cast<float>());
       yaw_reference_.push_back(it->getYaw());
       yaw_rate_reference_.push_back(it->getYawRate());
       yaw_acc_reference_.push_back(it->getYawAcc());
@@ -165,9 +165,9 @@ void MPCQueue::eraseOriginalReference(const size_t& start_index){
 void MPCQueue::pushBackPoint(const mav_msgs::EigenTrajectoryPoint& point)
 {
   if (current_queue_size_ < maximum_queue_size_) {
-    position_reference_.push_back(point.position_W);
-    velocity_reference_.push_back(point.velocity_W);
-    acceleration_reference_.push_back(point.acceleration_W);
+    position_reference_.push_back(point.position_W.cast<float>());
+    velocity_reference_.push_back(point.velocity_W.cast<float>());
+    acceleration_reference_.push_back(point.acceleration_W.cast<float>());
     yaw_reference_.push_back(point.getYaw());
     yaw_rate_reference_.push_back(point.getYawRate());
     yaw_acc_reference_.push_back(point.getYawAcc());
@@ -217,9 +217,9 @@ void MPCQueue::getLastPoint(mav_msgs::EigenTrajectoryPoint* point)
 {
   assert(point!=NULL);
   if (current_queue_size_ > 0) {
-    (*point).position_W = position_reference_.back();
-    (*point).velocity_W = velocity_reference_.back();
-    (*point).acceleration_W = acceleration_reference_.back();
+    (*point).position_W = position_reference_.back().cast<double>();
+    (*point).velocity_W = velocity_reference_.back().cast<double>();
+    (*point).acceleration_W = acceleration_reference_.back().cast<double>();
     (*point).setFromYaw(yaw_reference_.back());
     (*point).setFromYawRate(yaw_rate_reference_.back());
     (*point).setFromYawAcc(yaw_acc_reference_.back());
@@ -240,31 +240,31 @@ void MPCQueue::updateQueue()
   }
 }
 
-void MPCQueue::publishQueueMarker(const ros::TimerEvent&)
-{
-  if (trajectory_reference_vis_publisher_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker marker_queue;
-    marker_queue.header.frame_id = reference_frame_id_;
-    marker_queue.header.stamp = ros::Time();
-    marker_queue.type = visualization_msgs::Marker::LINE_STRIP;
-    marker_queue.scale.x = 0.05;
-    marker_queue.color.a = 1.0;
-    marker_queue.color.g = 1.0;
+// void MPCQueue::publishQueueMarker(const ros::TimerEvent&)
+// {
+//   if (trajectory_reference_vis_publisher_.getNumSubscribers() > 0) {
+//     visualization_msgs::Marker marker_queue;
+//     marker_queue.header.frame_id = reference_frame_id_;
+//     marker_queue.header.stamp = ros::Time();
+//     marker_queue.type = visualization_msgs::Marker::LINE_STRIP;
+//     marker_queue.scale.x = 0.05;
+//     marker_queue.color.a = 1.0;
+//     marker_queue.color.g = 1.0;
 
-//    marker_heading.type = visualization_msgs::Marker::ARROW;
-    {
-      for (size_t i = 0; i < current_queue_size_; i++) {
-        geometry_msgs::Point p;
-        p.x = position_reference_.at(i).x();
-        p.y = position_reference_.at(i).y();
-        p.z = position_reference_.at(i).z();
-        marker_queue.points.push_back(p);
-      }
-    }
+// //    marker_heading.type = visualization_msgs::Marker::ARROW;
+//     {
+//       for (size_t i = 0; i < current_queue_size_; i++) {
+//         geometry_msgs::Point p;
+//         p.x = position_reference_.at(i).x();
+//         p.y = position_reference_.at(i).y();
+//         p.z = position_reference_.at(i).z();
+//         marker_queue.points.push_back(p);
+//       }
+//     }
 
-    trajectory_reference_vis_publisher_.publish(marker_queue);
-  }
-}
+//     trajectory_reference_vis_publisher_.publish(marker_queue);
+//   }
+// }
 
 void MPCQueue::printQueue()
 {
@@ -273,8 +273,8 @@ void MPCQueue::printQueue()
   }
 }
 
-void MPCQueue::getQueue(Vector3dDeque& position_reference, Vector3dDeque& velocity_reference,
-                        Vector3dDeque& acceleration_reference, std::deque<float>& yaw_reference,
+void MPCQueue::getQueue(Vector3fDeque& position_reference, Vector3fDeque& velocity_reference,
+                        Vector3fDeque& acceleration_reference, std::deque<float>& yaw_reference,
                         std::deque<float>& yaw_rate_reference,std::deque<float>& yaw_acc_reference)
 {
 	position_reference.clear();

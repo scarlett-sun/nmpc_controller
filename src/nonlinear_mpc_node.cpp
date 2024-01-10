@@ -112,10 +112,10 @@ void NonLinearMpcControllerNode::InitializeParams() {
 void NonLinearMpcControllerNode::MultiDofJointTrajectoryCallback(
     const trajectory_msgs::MultiDOFJointTrajectoryConstPtr& msg) {
   mav_msgs::EigenTrajectoryPointDeque command_trajectory;
-  mav_msgs::eigenTrajectoryPointDequeFromMsg(*msg, &command_trajectory)
+  mav_msgs::eigenTrajectoryPointDequeFromMsg(*msg, &command_trajectory);
   nonlinear_mpc_.setCommandTrajectory(command_trajectory);
   if(!nonlinear_mpc_.controller_active_){
-    controller_timer_.start();
+    timer_.start();
     nonlinear_mpc_.controller_active_ = true;
   }
 }
@@ -123,7 +123,7 @@ void NonLinearMpcControllerNode::MultiDofJointTrajectoryCallback(
 void NonLinearMpcControllerNode::TimedCommandCallback(const ros::TimerEvent& e) {
   Eigen::VectorXd ref_rotor_velocities;
   if(!nonlinear_mpc_.controller_active_){
-    ref_rotor_velocities = Eigen::VectorXd::Zero(rotor_velocities->rows());
+    ref_rotor_velocities = Eigen::VectorXd::Zero(ref_rotor_velocities.rows());
   }
   else{
     nonlinear_mpc_.updateControlCommand();//execute controller
@@ -151,12 +151,14 @@ void NonLinearMpcControllerNode::TimedCommandCallback(const ros::TimerEvent& e) 
   // torque_thrust_reference_pub_.publish(torque_thrust_msg);
 }
 
-void NonLinearMpcControllerNode::OdometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg) {
+void NonLinearMpcControllerNode::OdometryCallback(const nav_msgs::OdometryConstPtr& msg) {
   ROS_INFO_ONCE("LeePositionController got first odometry message.");
-
-  EigenOdometry odometry;
-  eigenOdometryFromMsg(odometry_msg, &odometry);
-  nonlinear_mpc_.SetOdometry(odometry);
+  mav_msgs::EigenOdometry odometry;  
+  odometry.position_W = mav_msgs::vector3FromPointMsg(msg->pose.pose.position);
+  odometry.orientation_W_B = mav_msgs::quaternionFromMsg(msg->pose.pose.orientation);
+  odometry.velocity_B = mav_msgs::vector3FromMsg(msg->twist.twist.linear);
+  odometry.angular_velocity_B = mav_msgs::vector3FromMsg(msg->twist.twist.angular);
+  nonlinear_mpc_.setOdometry(odometry);
 }
 
 }

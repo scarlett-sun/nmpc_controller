@@ -15,15 +15,15 @@
 namespace mav_control {
 
 // Default values for the lee position controller and the Asctec Firefly.
-static const Eigen::Vector3d kDefaultPositionWeights = Eigen::Vector3d(6, 6, 6);
-static const Eigen::Vector3d kDefaultVelocityWeights = Eigen::Vector3d(4.7, 4.7, 4.7);
-static const Eigen::Vector3d kDefaultAttitudeWeights = Eigen::Vector3d(3, 3, 0.035);
-static const Eigen::Vector3d kDefaultAngularRateWeights = Eigen::Vector3d(0.52, 0.52, 0.025);
+static const Eigen::Vector3f kDefaultPositionWeights = Eigen::Vector3f(6, 6, 6);
+static const Eigen::Vector3f kDefaultVelocityWeights = Eigen::Vector3f(4.7, 4.7, 4.7);
+static const Eigen::Vector3f kDefaultAttitudeWeights = Eigen::Vector3f(3, 3, 0.035);
+static const Eigen::Vector3f kDefaultAngularRateWeights = Eigen::Vector3f(0.52, 0.52, 0.025);
 static const float kDefaultThrustWeight = 1;
-static const Eigen::Vector3d kDefaultTauWeight = Eigen::Vector3d(0.52, 0.52, 0.025);
+static const Eigen::Vector3f kDefaultTauWeight = Eigen::Vector3f(0.52, 0.52, 0.025);
 static const float kDefaultMinThrust = 0.0;
 static const float kDefaultMaxThrust = 30.0;
-static const Eigen::Vector3d kDefaultMaxTau = Eigen::Vector3d(3,3,3);
+static const Eigen::Vector3f kDefaultMaxTau = Eigen::Vector3f(3,3,3);
 static const float kDefaultSamplingTime = 0.1;
 static const float kDefaultPredictionSamplingTime = 2.0;
 
@@ -47,16 +47,16 @@ class NonlinearMpcControllerParameters {
 
   Eigen::Matrix4Xd allocation_matrix_;
 
-  Eigen::Vector3d q_position_;
-  Eigen::Vector3d q_velocity_;
-  Eigen::Vector3d q_attitude_;
-  Eigen::Vector3d q_angular_rate_;
+  Eigen::Vector3f q_position_;
+  Eigen::Vector3f q_velocity_;
+  Eigen::Vector3f q_attitude_;
+  Eigen::Vector3f q_angular_rate_;
   float r_thrust_;
-  Eigen::Vector3d r_tau_;
+  Eigen::Vector3f r_tau_;
 
   float min_thrust_;
   float max_thrust_;
-  Eigen::Vector3d max_tau_;
+  Eigen::Vector3f max_tau_;
   
   float sampling_time_;
   float prediction_sampling_time_;
@@ -73,19 +73,22 @@ class NonlinearMpcController
   NonlinearMpcControllerParameters controller_parameters_;
   VehicleParameters vehicle_parameters_;
 
-  void setOdometry(const EigenOdometry& odometry);
+  void setOdometry(const mav_msgs::EigenOdometry& odometry);
   void updateControlCommand();//for controller node
 
   void setCommandTrajectoryPoint(const mav_msgs::EigenTrajectoryPoint& command_trajectory);//for controller node
   void setCommandTrajectory(const mav_msgs::EigenTrajectoryPointDeque& command_trajectory);//for controller node
   
-  void getControlCommand(const Eigen::Vector4d& torque_thrust){torque_thrust = command_torque_thrust_;}
-  
+  void getControlCommand(Eigen::Vector4d& torque_thrust){torque_thrust = command_torque_thrust_;}
+    
+  void initializeParameters();
   bool controller_active_{false};
   void CalculateRotorVelocities(const Eigen::Vector4d& torque_thrust, Eigen::VectorXd* rotor_velocities) const; 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
  private:
+  Eigen::Vector3f g_;
+  Eigen::MatrixX4d torque_thrust_to_rotor_velocities_;
   MpcWrapper mpc_wrapper_;//000000000000000000000
   std::thread preparation_thread_;//00000000000000000
   MPCQueue mpc_queue_;//store trajectory into a deque
@@ -105,7 +108,7 @@ class NonlinearMpcController
   Eigen::Vector4d command_torque_thrust_;//predicted_inputs
 
   // sampling time parameters
-  void initializeParameters();
+
   bool initialized_parameters_{false};
 
   // controller weights
@@ -113,7 +116,7 @@ class NonlinearMpcController
   Eigen::Matrix<float, kInputSize, kInputSize> R_;//need to be initialized in initializeParameters
   
   // reference states queue
-  Vector3dDeque position_ref_, velocity_ref_, acc_ref_;
+  Vector3fDeque position_ref_, velocity_ref_, acc_ref_;
   std::deque<float> yaw_ref_, yaw_rate_ref_, yaw_acc_ref_;
 
   void preparationThread();
