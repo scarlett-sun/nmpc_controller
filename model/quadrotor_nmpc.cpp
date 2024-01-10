@@ -34,26 +34,23 @@ int main(int argc, char * const argv[ ])
   // Parameters with exemplary values. These are set/overwritten at runtime.
 /*以下数值需要在整个功能包里统一*/
   const double t_start = 0.0;     // Initial time [s]
-  const double t_end = 2.0;       // Time horizon [s]
-  const double dt = 0.1;          // Discretization time [s]
+  const double t_end = 0.1;       // Time horizon [s]
+  const double dt = 0.01;          // Discretization time [s]
   const int N = round(t_end/dt);  // Number of nodes
 
-  const double g_z = 9.8066;      // Gravity is everywhere [m/s^2]
-  const double mass=1.5;//运行时能否改变这些数据，例程写的是可以
-  const double Jxx = 1;
-  const double Jyy = 1;
-  const double Jzz = 1;
+  const double g_z = 9.81;      // Gravity is everywhere [m/s^2]
+  const double mass = 1.52;//运行时能否改变这些数据，例程写的是可以
+  const double Jxx = 0.0347563;
+  const double Jyy = 0.0458929;
+  const double Jzz = 0.0977;
 /*以上数值需要在整个功能包里统一*/
 
   //bounds are set online
-  const double thrust_min = 0;         // Minimal thrust [N]
-  const double thrust_max = 25;        // Maximal thrust [N]
-  const double taux_min = 0;         // Minimal taux [Nm]
-  const double taux_max = 0.5;       // Maximal taux [Nm]
-  const double tauy_min = 0;         // Minimal tauy [Nm]
-  const double tauy_max = 0.5;       // Maximal tauy [Nm]
-  const double tauz_min = 0;         // Minimal tauz [Nm]
-  const double tauz_max = 0.5;       // Maximal tauz [Nm]
+  const double thrust_min = 0.1;         // Minimal thrust [N]
+  const double thrust_max = 30;        // Maximal thrust [N]
+  const double taux_max = 1;       // Maximal taux [Nm]
+  const double tauy_max = 1;       // Maximal tauy [Nm]
+  const double tauz_max = 1;       // Maximal tauz [Nm]
 
   f << dot(p_x) ==  v_x;
   f << dot(p_y) ==  v_y;
@@ -137,9 +134,9 @@ int main(int argc, char * const argv[ ])
   ocp.subjectTo( f );
 
   // Add constraints
-  ocp.subjectTo(taux_min <= tau_x <= taux_max);
-  ocp.subjectTo(tauy_min <= tau_y <= tauy_max);
-  ocp.subjectTo(tauz_min <= tau_z <= tauz_max);
+  ocp.subjectTo(-taux_max <= tau_x <= taux_max);
+  ocp.subjectTo(-tauy_max <= tau_y <= tauy_max);
+  ocp.subjectTo(-tauz_max <= tau_z <= tauz_max);
   ocp.subjectTo(thrust_min <= thrust <= thrust_max);
 
   //
