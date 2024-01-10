@@ -81,19 +81,19 @@ bool MpcWrapper::setLimits(const float& min_thrust, const float& max_thrust, con
     return false;
   }
 
-  if(max_taux <= 0.0)
+  if(max_taux < 0.0)
   {
     ROS_ERROR("MPC: Maximal xy-rate is not set properly, not changed.");
     return false;
   }
 
-  if(max_tauy <= 0.0)
+  if(max_tauy < 0.0)
   {
     ROS_ERROR("MPC: Maximal yaw-rate is not set properly, not changed.");
     return false;
   }
 
-  if(max_tauz <= 0.0)
+  if(max_tauz < 0.0)
   {
     ROS_ERROR("MPC: Maximal yaw-rate is not set properly, not changed.");
     return false;

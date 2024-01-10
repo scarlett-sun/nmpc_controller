@@ -20,6 +20,8 @@ void NonlinearMpcController::initializeParameters(){
   R_ = (Eigen::Matrix<float, kInputSize, 1>() <<
       controller_parameters_.r_tau_,controller_parameters_.r_thrust_).finished().asDiagonal();
 
+  calculateAllocationMatrix(vehicle_parameters_.rotor_configuration_, &(controller_parameters_.allocation_matrix_));
+
   torque_thrust_to_rotor_velocities_.resize(vehicle_parameters_.rotor_configuration_.rotors.size(), 4);
   // Calculate the pseude-inverse A^{ \dagger} and then multiply by the inertia matrix I.
   // A^{ \dagger} = A^T*(A*A^T)^{-1}
@@ -33,6 +35,38 @@ void NonlinearMpcController::initializeParameters(){
   preparation_thread_ = std::thread(&MpcWrapper::prepare, mpc_wrapper_);
 
 }
+
+void NonlinearMpcController::getCurrentReferenceStates(nav_msgs::Odometry& current_reference_states){
+  geometry_msgs::Vector3 vec3;
+  geometry_msgs::Point vec_p;
+  geometry_msgs::Quaternion quat;
+
+  mav_msgs::pointEigenToMsg(position_ref_.front().cast<double>(),&vec_p);
+  current_reference_states.pose.pose.position = vec_p;
+  
+  mav_msgs::quaternionEigenToMsg(mav_msgs::quaternionFromYaw(yaw_ref_.front()),&quat);
+  current_reference_states.pose.pose.orientation = quat;
+
+  mav_msgs::vectorEigenToMsg(velocity_ref_.front().cast<double>(),&vec3);
+  current_reference_states.twist.twist.linear = vec3;
+  if(vec3.z>0.5){
+    std::cout << "Something is wrong with the z veloctiy" <<std::endl;
+    std::cout << vec3.z << std::endl;
+  }
+
+  mav_msgs::setAngularVelocityMsgFromYawRate(yaw_rate_ref_.front(),&vec3);
+  current_reference_states.twist.twist.angular = vec3;
+}
+
+void NonlinearMpcController::getCurrentReferenceInputs(mav_msgs::TorqueThrust& current_reference_inputs){
+  current_reference_inputs.thrust.x = 0;
+  current_reference_inputs.thrust.y = 0;
+  current_reference_inputs.thrust.z = thrust_ref_.front();
+  current_reference_inputs.torque.x = torque_ref_.front().x();
+  current_reference_inputs.torque.y = torque_ref_.front().y();
+  current_reference_inputs.torque.z = torque_ref_.front().z();
+}
+
 
 void NonlinearMpcController::setLimitsAndWeights(){
   mpc_wrapper_.setCosts(Q_,R_);
@@ -133,7 +167,6 @@ void NonlinearMpcController::setReferenceStates() {
     }
 }
 
-
 // void NonlinearMpcController::setReferenceInputs(){
 //   Eigen::Matrix<float, kInputSize, 1> input;
 //   for(int i = 0 ; i < (kSamples+1);i++){
@@ -145,7 +178,6 @@ void NonlinearMpcController::setReferenceStates() {
 //     reference_inputs_.block(0,i,kInputSize,1) = input;
 //   }
 // }
-
 
 void NonlinearMpcController::setReferenceInputs() {
     // Check if the size of the references matches the expected size
@@ -171,6 +203,8 @@ void NonlinearMpcController::setReferenceInputs() {
 
         // Assign the computed input to reference_inputs_
         reference_inputs_.block(0, i, kInputSize, 1) = input;
+        thrust_ref_.push_back(input(3, 0));
+        torque_ref_.push_back(input.segment(0, 3));
     }
 }
 
@@ -230,11 +264,16 @@ void NonlinearMpcController::setCommandTrajectoryPoint(
 void NonlinearMpcController::setCommandTrajectory(
     const mav_msgs::EigenTrajectoryPointDeque& command_trajectory)
 {
+  command_trajectory_ = command_trajectory;
   int array_size = command_trajectory.size();
   if (array_size < 1)
     return;
-  command_trajectory_ = command_trajectory;
-  mpc_queue_.insertReferenceTrajectory(command_trajectory);
+  else if(array_size == 1){
+    mpc_queue_.insertReference(command_trajectory.front());
+  }
+  else{
+    mpc_queue_.insertReferenceTrajectory(command_trajectory);
+  }
 }
 
 void NonlinearMpcController::CalculateRotorVelocities(const Eigen::Vector4d& torque_thrust, Eigen::VectorXd* rotor_velocities) const {

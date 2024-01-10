@@ -20,6 +20,12 @@ NonLinearMpcControllerNode::NonLinearMpcControllerNode(
 
   motor_velocity_reference_pub_ = nh_.advertise<mav_msgs::Actuators>(
       mav_msgs::default_topics::COMMAND_ACTUATORS, 1);
+  
+  torque_thrust_pub_ = nh_.advertise<mav_msgs::TorqueThrust>("torque_thrust",1);
+
+  current_reference_inputs_pub_ = nh_.advertise<mav_msgs::TorqueThrust>("current_reference_inputs",1);
+
+  current_reference_states_pub_ = nh_.advertise<nav_msgs::Odometry>("current_reference_states",1);
 
   timer_ = nh_.createTimer(ros::Duration(0.01), &NonLinearMpcControllerNode::TimedCommandCallback, this,
                                   false, false);
@@ -121,16 +127,19 @@ void NonLinearMpcControllerNode::MultiDofJointTrajectoryCallback(
 }
 
 void NonLinearMpcControllerNode::TimedCommandCallback(const ros::TimerEvent& e) {
-  Eigen::VectorXd ref_rotor_velocities;
+
+  Eigen::Vector4d torque_thrust;
   if(!nonlinear_mpc_.controller_active_){
-    ref_rotor_velocities = Eigen::VectorXd::Zero(ref_rotor_velocities.rows());
+    torque_thrust = Eigen::Vector4d::Zero(torque_thrust.rows());
   }
   else{
     nonlinear_mpc_.updateControlCommand();//execute controller
-    Eigen::Vector4d torque_thrust;
     nonlinear_mpc_.getControlCommand(torque_thrust);
-    nonlinear_mpc_.CalculateRotorVelocities(torque_thrust, &ref_rotor_velocities);
   }
+  
+  Eigen::VectorXd ref_rotor_velocities;
+  nonlinear_mpc_.CalculateRotorVelocities(torque_thrust, &ref_rotor_velocities);
+
   //publish motor speed message
   mav_msgs::ActuatorsPtr actuator_msg(new mav_msgs::Actuators);
 
@@ -139,16 +148,24 @@ void NonLinearMpcControllerNode::TimedCommandCallback(const ros::TimerEvent& e) 
     actuator_msg->angular_velocities.push_back(ref_rotor_velocities[i]);
   actuator_msg->header.stamp = ros::Time::now();
   motor_velocity_reference_pub_.publish(actuator_msg); 
-  // // publish torque_thrust message 
-  // mavros_msgs::TorqueThrust torque_thrust_msg{};
-  // torque_thrust_msg.header.stamp = actuator_msg->header.stamp;
-  // torque_thrust_msg.torque.x = torque_thrust(0);
-  // torque_thrust_msg.torque.y = torque_thrust(1);
-  // torque_thrust_msg.torque.z = torque_thrust(2);
-  // torque_thrust_msg.thrust.x = 0;
-  // torque_thrust_msg.thrust.y = 0;
-  // torque_thrust_msg.thrust.z = torque_thrust(3)/thrust_scaling_factor_;
-  // torque_thrust_reference_pub_.publish(torque_thrust_msg);
+  // publish torque_thrust message 
+
+  mav_msgs::TorqueThrust torque_thrust_msg{};
+  torque_thrust_msg.header = actuator_msg->header;
+  torque_thrust_msg.thrust.x = 0;
+  torque_thrust_msg.thrust.y = 0;
+  torque_thrust_msg.thrust.z = torque_thrust(3);
+  torque_thrust_msg.torque.x = torque_thrust(0);
+  torque_thrust_msg.torque.y = torque_thrust(1);
+  torque_thrust_msg.torque.z = torque_thrust(2);
+  torque_thrust_pub_.publish(torque_thrust_msg);
+
+  nav_msgs::Odometry current_reference_states_msg{};
+  nonlinear_mpc_.getCurrentReferenceStates(current_reference_states_msg);
+  current_reference_states_pub_.publish(current_reference_states_msg);
+
+  nonlinear_mpc_.getCurrentReferenceInputs(torque_thrust_msg);
+  current_reference_inputs_pub_.publish(torque_thrust_msg);
 }
 
 void NonLinearMpcControllerNode::OdometryCallback(const nav_msgs::OdometryConstPtr& msg) {

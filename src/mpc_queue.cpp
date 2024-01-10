@@ -167,6 +167,9 @@ void MPCQueue::pushBackPoint(const mav_msgs::EigenTrajectoryPoint& point)
   if (current_queue_size_ < maximum_queue_size_) {
     position_reference_.push_back(point.position_W.cast<float>());
     velocity_reference_.push_back(point.velocity_W.cast<float>());
+    if(point.velocity_W.cast<float>().z()>0.5){
+      std::cout << "point_velocity value weird!" <<std::endl;
+    }
     acceleration_reference_.push_back(point.acceleration_W.cast<float>());
     yaw_reference_.push_back(point.getYaw());
     yaw_rate_reference_.push_back(point.getYawRate());
@@ -213,16 +216,18 @@ void MPCQueue::popBackPoint()
   }
 }
 
-void MPCQueue::getLastPoint(mav_msgs::EigenTrajectoryPoint* point)
+void MPCQueue::getLastPoint(mav_msgs::EigenTrajectoryPoint& point)
 {
-  assert(point!=NULL);
   if (current_queue_size_ > 0) {
-    (*point).position_W = position_reference_.back().cast<double>();
-    (*point).velocity_W = velocity_reference_.back().cast<double>();
-    (*point).acceleration_W = acceleration_reference_.back().cast<double>();
-    (*point).setFromYaw(yaw_reference_.back());
-    (*point).setFromYawRate(yaw_rate_reference_.back());
-    (*point).setFromYawAcc(yaw_acc_reference_.back());
+    (point).position_W = position_reference_.back().cast<double>();
+    (point).velocity_W = velocity_reference_.back().cast<double>();
+    if(velocity_reference_.back().cast<double>().z()>0.5){
+      std::cout << "point_velocity value weird!!!!!"<<std::endl;
+    }
+    (point).acceleration_W = acceleration_reference_.back().cast<double>();
+    (point).setFromYaw(yaw_reference_.back());
+    (point).setFromYawRate(yaw_rate_reference_.back());
+    (point).setFromYawAcc(yaw_acc_reference_.back());
 
   }
 }
@@ -233,7 +238,7 @@ void MPCQueue::updateQueue()
     popFrontPoint();
 
     mav_msgs::EigenTrajectoryPoint point;
-    getLastPoint(&point);
+    getLastPoint(point);
 
     while (current_queue_size_ < minimum_queue_size_)
       pushBackPoint(point);

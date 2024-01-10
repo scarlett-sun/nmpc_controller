@@ -80,7 +80,9 @@ class NonlinearMpcController
   void setCommandTrajectory(const mav_msgs::EigenTrajectoryPointDeque& command_trajectory);//for controller node
   
   void getControlCommand(Eigen::Vector4d& torque_thrust){torque_thrust = command_torque_thrust_;}
-    
+  
+  void getCurrentReferenceStates(nav_msgs::Odometry& current_reference_states);
+  void getCurrentReferenceInputs(mav_msgs::TorqueThrust& current_reference_inputs);
   void initializeParameters();
   bool controller_active_{false};
   void CalculateRotorVelocities(const Eigen::Vector4d& torque_thrust, Eigen::VectorXd* rotor_velocities) const; 
@@ -118,6 +120,9 @@ class NonlinearMpcController
   // reference states queue
   Vector3fDeque position_ref_, velocity_ref_, acc_ref_;
   std::deque<float> yaw_ref_, yaw_rate_ref_, yaw_acc_ref_;
+
+  Vector3fDeque torque_ref_;
+  std::deque<float> thrust_ref_;
 
   void preparationThread();
   void setCommandFromPredictedResults();

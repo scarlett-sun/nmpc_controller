@@ -16,6 +16,7 @@
 #include <nav_msgs/Odometry.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
 #include <mav_msgs/Status.h>
+#include <mav_msgs/TorqueThrust.h>
 
 #include <nmpc_controller/nonlinear_mpc.h>
 // #include <mav_control_interface/position_controller_interface.h>
@@ -45,6 +46,10 @@ class NonLinearMpcControllerNode
   ros::Subscriber odometry_sub_;
 
   ros::Publisher motor_velocity_reference_pub_;
+  ros::Publisher torque_thrust_pub_;
+
+  ros::Publisher current_reference_states_pub_;
+  ros::Publisher current_reference_inputs_pub_;
 
   ros::Timer timer_;//100Hz
 

@@ -67,7 +67,7 @@ class MPCQueue
   void pushBackPoint(const mav_msgs::EigenTrajectoryPoint& point);
   void popFrontPoint();
   void popBackPoint();
-  void getLastPoint(mav_msgs::EigenTrajectoryPoint* point);
+  void getLastPoint(mav_msgs::EigenTrajectoryPoint& point);
   void shrinkQueueToMinimum();
 
   //interpolate the reference queue to the controller update rate
