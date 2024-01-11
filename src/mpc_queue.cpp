@@ -110,7 +110,8 @@ void MPCQueue::insertReferenceTrajectory(const mav_msgs::EigenTrajectoryPointDeq
 
   mav_msgs::EigenTrajectoryPointDeque interpolated_queue;
   linearInterpolateTrajectory(queue, interpolated_queue);
-
+  std::cout << "finished interpolation and the size is: "<<std::endl;
+  std::cout << interpolated_queue.size() <<std::endl;
   {
     // Two options: if time is 0 or < than queue start time, shrink the queue to
     // minimum and insert.
@@ -289,8 +290,18 @@ void MPCQueue::getQueue(Vector3fDeque& position_reference, Vector3fDeque& veloci
 	yaw_rate_reference.clear();
   yaw_acc_reference.clear();
 
-  int N = std::ceil(prediction_sampling_time_/queue_dt_);
-  for(int i=0; i<N*std::floor(current_queue_size_/N); i=i+N){
+  int N = std::ceil(prediction_sampling_time_/queue_dt_);//10
+  // std::cout << "N: "<< N << std::endl;
+  // std::cout << "N*std::floor(current_queue_size_/N): "<<N*std::floor(current_queue_size_/N)<< std::endl;
+  // for(int i=0; i<N*std::floor(current_queue_size_/N); i=i+N){
+	//   position_reference.push_back(position_reference_.at(i));
+	//   velocity_reference.push_back(velocity_reference_.at(i));
+	//   acceleration_reference.push_back(acceleration_reference_.at(i));
+	//   yaw_reference.push_back(yaw_reference_.at(i));
+	//   yaw_rate_reference.push_back(yaw_rate_reference_.at(i));
+  //   yaw_acc_reference.push_back(yaw_acc_reference_.at(i));
+  // }
+  for(int i=0; i<=N; i++){
 	  position_reference.push_back(position_reference_.at(i));
 	  velocity_reference.push_back(velocity_reference_.at(i));
 	  acceleration_reference.push_back(acceleration_reference_.at(i));
@@ -298,6 +309,7 @@ void MPCQueue::getQueue(Vector3fDeque& position_reference, Vector3fDeque& veloci
 	  yaw_rate_reference.push_back(yaw_rate_reference_.at(i));
     yaw_acc_reference.push_back(yaw_acc_reference_.at(i));
   }
+  // std::cout << "size: "<< position_reference.size() << std::endl; 
 }
 
 void MPCQueue::linearInterpolateTrajectory(const mav_msgs::EigenTrajectoryPointDeque& input_queue,

@@ -123,6 +123,7 @@ void NonLinearMpcControllerNode::MultiDofJointTrajectoryCallback(
   if(!nonlinear_mpc_.controller_active_){
     timer_.start();
     nonlinear_mpc_.controller_active_ = true;
+    std::cout << "controller is active now"<< std::endl;
   }
 }
 
@@ -134,6 +135,7 @@ void NonLinearMpcControllerNode::TimedCommandCallback(const ros::TimerEvent& e) 
   }
   else{
     nonlinear_mpc_.updateControlCommand();//execute controller
+    // std::cout << "if you can see this message, then it didnt fail here" << std::endl;
     nonlinear_mpc_.getControlCommand(torque_thrust);
   }
   

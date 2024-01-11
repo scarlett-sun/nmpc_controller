@@ -85,27 +85,38 @@ void NonlinearMpcController::updateControlCommand(){
     ROS_ERROR("limits and weights not set");
     return;
   }
+  // std::cout << "point A" << std::endl;
   mpc_queue_.updateQueue();//getQueue函数有问题！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！1
+  // std::cout << "point B" << std::endl;
   mpc_queue_.getQueue(
     position_ref_, velocity_ref_, acc_ref_, yaw_ref_, yaw_rate_ref_,yaw_acc_ref_);//need to be changed to include torque and thrust
+  // std::cout << "point C" << std::endl;
   setReferenceStates();//把xxx_ref_转写成reference_states和reference_inputs_
+  // std::cout << "point D" << std::endl;
   setReferenceInputs();
+  // std::cout << "point E" << std::endl;
   preparation_thread_.join();
+  // std::cout << "point F" << std::endl;
   mpc_wrapper_.setInitialState(est_state_);
+  // std::cout << "point G" << std::endl;
   mpc_wrapper_.setReferences(reference_states_,reference_inputs_);
+  // std::cout << "point H" << std::endl;
   //计算，暂时等同于从初始位置进行求解
   if (solve_from_scratch_) {
     ROS_INFO("Solving MPC with ground as initial guess.");
     mpc_wrapper_.solve(est_state_);
+    // std::cout << "point I" << std::endl;
     solve_from_scratch_ = false;
   } else {
     mpc_wrapper_.update(est_state_);
+    // std::cout << "point J" << std::endl;
   }
 
   // Start a thread to prepare for the next execution.
   preparation_thread_ = std::thread(&NonlinearMpcController::preparationThread, this);
-
+  // std::cout << "point K" << std::endl;
   mpc_wrapper_.getInputs(predicted_inputs_);//换成消息，不要eigen，或者用结构体，包含时间戳
+  // std::cout << "point L" << std::endl;
   setCommandFromPredictedResults();//这里得加上时间戳！！！！！！！！！！！！！！！！！！！！！！待办
 }
 
@@ -138,33 +149,61 @@ void NonlinearMpcController::setReferenceStates() {
         position_ref_.size() != velocity_ref_.size() ||
         position_ref_.size() != yaw_rate_ref_.size()) {
         // Handle error or throw an exception
+        // std::cout << "Error: size not the same" << std::endl;
         return;
     }
 
     // Initialize state vector
     Eigen::VectorXf state(kStateSize);
-
+    // std::cout << "position ref size: "<< position_ref_.size() <<std::endl;
     int i = 0;
-    for (auto it = position_ref_.begin(); it != position_ref_.end(); ++it) {
-        // Populate state vector segments
-        state.segment(0, 3) = *it;
-        state.segment(3, 1).setZero();
-        state.segment(4, 1).setZero();
-        state.segment(5, 1).setConstant(yaw_ref_.front());
-        state.segment(6, 3) = velocity_ref_.front();
-        state.segment(9, 1).setZero();
-        state.segment(10, 1).setZero();
-        state.segment(11, 1).setConstant(yaw_rate_ref_.front());
+    auto it = position_ref_.begin();
+    while(i < position_ref_.size()){
+      // Populate state vector segments
+      state.segment(0, 3) = *it;
+      state.segment(3, 1).setZero();
+      state.segment(4, 1).setZero();
+      state.segment(5, 1).setConstant(yaw_ref_.front());
+      state.segment(6, 3) = velocity_ref_.front();
+      state.segment(9, 1).setZero();
+      state.segment(10, 1).setZero();
+      state.segment(11, 1).setConstant(yaw_rate_ref_.front());
 
-        // Remove front elements from reference vectors
-        yaw_ref_.pop_front();
-        velocity_ref_.pop_front();
-        yaw_rate_ref_.pop_front();
+      // Remove front elements from reference vectors
+      yaw_ref_.pop_front();
+      velocity_ref_.pop_front();
+      yaw_rate_ref_.pop_front();
 
-        // Assign state vector to reference_states_
-        reference_states_.block(0, i, kStateSize, 1) = state;
+      // std::cout << "i: "<< i << std::endl;
+      // Assign state vector to reference_states_
+      reference_states_.block(0, i, kStateSize, 1) = state;
+      if(i<position_ref_.size()){
         i++;
+        it++;
+      }
     }
+
+    // for (auto it = position_ref_.begin(); it != position_ref_.end(); ++it) {
+    //   // Populate state vector segments
+    //   state.segment(0, 3) = *it;
+    //   state.segment(3, 1).setZero();
+    //   state.segment(4, 1).setZero();
+    //   state.segment(5, 1).setConstant(yaw_ref_.front());
+    //   state.segment(6, 3) = velocity_ref_.front();
+    //   state.segment(9, 1).setZero();
+    //   state.segment(10, 1).setZero();
+    //   state.segment(11, 1).setConstant(yaw_rate_ref_.front());
+
+    //   // Remove front elements from reference vectors
+    //   yaw_ref_.pop_front();
+    //   velocity_ref_.pop_front();
+    //   yaw_rate_ref_.pop_front();
+
+    //   // Assign state vector to reference_states_
+    //   reference_states_.block(0, i, kStateSize, 1) = state;
+    //   i++;
+    // }
+    // std::cout << "i: "<< i << std::endl;
 }
 
 // void NonlinearMpcController::setReferenceInputs(){
@@ -273,6 +312,7 @@ void NonlinearMpcController::setCommandTrajectory(
   }
   else{
     mpc_queue_.insertReferenceTrajectory(command_trajectory);
+    // std::cout << "The trajectory should be inserted"<< std::endl;
   }
 }
 
