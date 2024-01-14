@@ -17,7 +17,6 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   cmake_modules
-  mavros_msgs
 )
 
 catkin_simple()
@@ -137,6 +136,12 @@ target_link_libraries(nonlinear_mpc_node
   mpc_wrapper
   mpc_queue
   mpc_solver)
+
+cs_add_executable(waypoint_publisher_3rd_polynomial src/waypoint_publisher_3rd_polynomial.cpp)
+target_link_libraries(waypoint_publisher_3rd_polynomial ${catkin_LIBRARIES})
+
+cs_add_executable(waypoint_publisher_5rd_polynomial src/waypoint_publisher_5rd_polynomial.cpp)
+target_link_libraries(waypoint_publisher_5rd_polynomial ${catkin_LIBRARIES})
 
 cs_install()
 cs_export()
