@@ -24,8 +24,8 @@
 
 # 下面是发送一系列点，作为悬停指令
 # weights for states
-q_position: {x: 2000, y: 2000, z: 2000} # x y 500 good
-q_velocity: {x: 200, y: 200, z: 50}
+q_position: {x: 20, y: 20, z: 50} # x y 500 good
+q_velocity: {x: 10, y: 10, z: 10}
 # q_velocity: {x: 10, y: 10, z: 20}
 q_attitude: {x: 50, y: 50, z: 50}
 q_angular_rate: {x: 10, y: 10, z: 10}
@@ -41,6 +41,5 @@ max_tau: {x: 0.05, y: 0.05, z: 0.05} # [Nm]
 
 # time
 controller_frequency: 100 # [Hz]
-sampling_time: 0.01 # [s]
-prediction_sampling_time: 0.1 # [s]
-# 因为mpc_queue逻辑上不好修改了，所以只能先这样设置成0.01和0.1
+queue_dt: 0.01 # [s]
+prediction_sampling_time: 1 # [s] # 2s will yield NAN thrust value
