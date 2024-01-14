@@ -34,8 +34,8 @@ int main(int argc, char * const argv[ ])
   // Parameters with exemplary values. These are set/overwritten at runtime.
 /*以下数值需要在整个功能包里统一*/
   const double t_start = 0.0;     // Initial time [s]
-  const double t_end = 0.1;       // Time horizon [s]
-  const double dt = 0.01;          // Discretization time [s]
+  const double t_end = 1.0;       // Time horizon [s]
+  const double dt = 0.1;          // Discretization time [s]
   const int N = round(t_end/dt);  // Number of nodes
 
   const double g_z = 9.81;      // Gravity is everywhere [m/s^2]
