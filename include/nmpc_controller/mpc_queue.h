@@ -44,13 +44,15 @@ class MPCQueue
 
  private:
   int minimum_queue_size_;
-  int mpc_queue_size_;
+  int mpc_reference_size_;
   const int maximum_queue_size_;
   int current_queue_size_;
   bool initialized_;
 
   float prediction_sampling_time_;
   float queue_dt_;
+  float mpc_dt_;
+  int N_;
 
   //state reference
   Vector3fDeque position_reference_;//完整的插值后的，间隔为0.1s的trajectory

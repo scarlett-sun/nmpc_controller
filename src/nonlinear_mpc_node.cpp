@@ -104,9 +104,9 @@ void NonLinearMpcControllerNode::InitializeParams() {
                   nonlinear_mpc_.controller_parameters_.max_tau_.z(),
                   &nonlinear_mpc_.controller_parameters_.max_tau_.z());
 
-  GetRosParameter(private_nh_, "sampling_time",
-                  nonlinear_mpc_.controller_parameters_.sampling_time_,
-                  &nonlinear_mpc_.controller_parameters_.sampling_time_);
+  GetRosParameter(private_nh_, "queue_dt",
+                  nonlinear_mpc_.controller_parameters_.queue_dt_,
+                  &nonlinear_mpc_.controller_parameters_.queue_dt_);
   GetRosParameter(private_nh_, "prediction_sampling_time",
                   nonlinear_mpc_.controller_parameters_.prediction_sampling_time_,
                   &nonlinear_mpc_.controller_parameters_.prediction_sampling_time_);

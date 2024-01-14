@@ -24,7 +24,7 @@ static const Eigen::Vector3f kDefaultTauWeight = Eigen::Vector3f(0.52, 0.52, 0.0
 static const float kDefaultMinThrust = 0.0;
 static const float kDefaultMaxThrust = 30.0;
 static const Eigen::Vector3f kDefaultMaxTau = Eigen::Vector3f(3,3,3);
-static const float kDefaultSamplingTime = 0.1;
+static const float kDefaultQueueDt = 0.01;
 static const float kDefaultPredictionSamplingTime = 2.0;
 
 class NonlinearMpcControllerParameters {
@@ -40,7 +40,7 @@ class NonlinearMpcControllerParameters {
         min_thrust_(kDefaultMinThrust),
         max_thrust_(kDefaultMaxThrust),
         max_tau_(kDefaultMaxTau),
-        sampling_time_(kDefaultSamplingTime),
+        queue_dt_(kDefaultQueueDt),
         prediction_sampling_time_(kDefaultPredictionSamplingTime) {
     calculateAllocationMatrix(rotor_configuration_, &allocation_matrix_);
   }
@@ -58,7 +58,7 @@ class NonlinearMpcControllerParameters {
   float max_thrust_;
   Eigen::Vector3f max_tau_;
   
-  float sampling_time_;
+  float queue_dt_;
   float prediction_sampling_time_;
 
   RotorConfiguration rotor_configuration_;

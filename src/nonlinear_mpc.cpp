@@ -31,7 +31,7 @@ void NonlinearMpcController::initializeParameters(){
   initialized_parameters_ = true;
   
   setLimitsAndWeights();
-  mpc_queue_.initializeQueue(controller_parameters_.sampling_time_,controller_parameters_.prediction_sampling_time_);
+  mpc_queue_.initializeQueue(controller_parameters_.queue_dt_,controller_parameters_.prediction_sampling_time_);
   preparation_thread_ = std::thread(&MpcWrapper::prepare, mpc_wrapper_);
 
 }
@@ -117,106 +117,51 @@ void NonlinearMpcController::updateControlCommand(){
   // std::cout << "point K" << std::endl;
   mpc_wrapper_.getInputs(predicted_inputs_);//换成消息，不要eigen，或者用结构体，包含时间戳
   // std::cout << "point L" << std::endl;
+    // std::cout << "commanded thrust?: " << predicted_inputs_.row(3)[0] << std::endl;
+    //if controller prediction time is not properly set, it is likely to yield NAN, need to retune the parameters
   setCommandFromPredictedResults();//这里得加上时间戳！！！！！！！！！！！！！！！！！！！！！！待办
 }
 
-// void NonlinearMpcController::setReferenceStates(){
-//   //  Eigen::Matrix<float, kStateSize, kSamples + 1> reference_states_;
-//   Eigen::VectorXf state;
-//   int i = 0;
-//   for (auto it = position_ref_.begin(); it != position_ref_.end(); ++it) {
-//     state.segment(0,3) = *it;
-//     state.segment(3,1).setZero();
-//     state.segment(4,1).setZero();
-//     state.segment(5,1) = yaw_ref_.front();
-//     state.segment(6,3) = velocity_ref_.front();
-//     state.segment(9,1).setZero();
-//     state.segment(10,1).setZero();
-//     state.segment(11,1) = yaw_rate_ref_.front();
-
-//     yaw_ref_.pop_front();
-//     velocity_ref_.pop_front();
-//     yaw_rate_ref_.pop_front();
-
-//     reference_states_.block(0,i,kStateSize,1) = state;
-//     i++;
-//   }
-// }//注意是i还是i+1是；sample还是sample+1，要assert一下
-
 void NonlinearMpcController::setReferenceStates() {
-    // Check if all reference vectors have the same size
-    if (position_ref_.size() != yaw_ref_.size() ||
-        position_ref_.size() != velocity_ref_.size() ||
-        position_ref_.size() != yaw_rate_ref_.size()) {
-        // Handle error or throw an exception
-        // std::cout << "Error: size not the same" << std::endl;
-        return;
-    }
+  // Check if all reference vectors have the same size
+  if (position_ref_.size() != yaw_ref_.size() ||
+      position_ref_.size() != velocity_ref_.size() ||
+      position_ref_.size() != yaw_rate_ref_.size()) {
+      // Handle error or throw an exception
+      std::cout << "Error: size not the same" << std::endl;
+      return;
+  }
 
-    // Initialize state vector
-    Eigen::VectorXf state(kStateSize);
-    // std::cout << "position ref size: "<< position_ref_.size() <<std::endl;
-    int i = 0;
-    auto it = position_ref_.begin();
-    while(i < position_ref_.size()){
-      // Populate state vector segments
-      state.segment(0, 3) = *it;
-      state.segment(3, 1).setZero();
-      state.segment(4, 1).setZero();
-      state.segment(5, 1).setConstant(yaw_ref_.front());
-      state.segment(6, 3) = velocity_ref_.front();
-      state.segment(9, 1).setZero();
-      state.segment(10, 1).setZero();
-      state.segment(11, 1).setConstant(yaw_rate_ref_.front());
+  // Initialize state vector
+  Eigen::VectorXf state(kStateSize);
+  // std::cout << "position ref size: "<< position_ref_.size() <<std::endl;
+  int i = 0;
+  auto it = position_ref_.begin();
+  while(i < position_ref_.size()){
+    // Populate state vector segments
+    state.segment(0, 3) = *it;
+    state.segment(3, 1).setZero();
+    state.segment(4, 1).setZero();
+    state.segment(5, 1).setConstant(yaw_ref_.at(i));
+    state.segment(6, 3) = velocity_ref_.at(i);
+    state.segment(9, 1).setZero();
+    state.segment(10, 1).setZero();
+    state.segment(11, 1).setConstant(yaw_rate_ref_.at(i));
 
-      // Remove front elements from reference vectors
-      yaw_ref_.pop_front();
-      velocity_ref_.pop_front();
-      yaw_rate_ref_.pop_front();
+    // // Remove front elements from reference vectors
+    // yaw_ref_.pop_front();
+    // velocity_ref_.pop_front();
+    // yaw_rate_ref_.pop_front();
 
-      // std::cout << "i: "<< i << std::endl;
-      // Assign state vector to reference_states_
-      reference_states_.block(0, i, kStateSize, 1) = state;
-      if(i<position_ref_.size()){
-        i++;
-        it++;
-      }
-    }
-
-    // for (auto it = position_ref_.begin(); it != position_ref_.end(); ++it) {
-    //   // Populate state vector segments
-    //   state.segment(0, 3) = *it;
-    //   state.segment(3, 1).setZero();
-    //   state.segment(4, 1).setZero();
-    //   state.segment(5, 1).setConstant(yaw_ref_.front());
-    //   state.segment(6, 3) = velocity_ref_.front();
-    //   state.segment(9, 1).setZero();
-    //   state.segment(10, 1).setZero();
-    //   state.segment(11, 1).setConstant(yaw_rate_ref_.front());
-
-    //   // Remove front elements from reference vectors
-    //   yaw_ref_.pop_front();
-    //   velocity_ref_.pop_front();
-    //   yaw_rate_ref_.pop_front();
-
-    //   // Assign state vector to reference_states_
-    //   reference_states_.block(0, i, kStateSize, 1) = state;
-    //   i++;
-    // }
     // std::cout << "i: "<< i << std::endl;
+    // Assign state vector to reference_states_
+    reference_states_.block(0, i, kStateSize, 1) = state;
+    if(i<position_ref_.size()){
+      i++;
+      it++;
+    }
+  }
 }
-
-// void NonlinearMpcController::setReferenceInputs(){
-//   Eigen::Matrix<float, kInputSize, 1> input;
-//   for(int i = 0 ; i < (kSamples+1);i++){
-
-//     input.segment(3,1) = vehicle_parameters_.mass_ * (acc_ref_.at(i) - g_);
-//     Eigen::Vector3d omega_dot = Eigen::Vector3d(0,0,yaw_acc_ref_.at(i));
-//     Eigen::Vector3d omega = Eigen::Vector3d(0,0,yaw_rate_ref_.at(i));
-//     input.segment(0,3) = vehicle_parameters_.inertia_ * omega_dot + omega.cross(vehicle_parameters_.inertia_ * omega);
-//     reference_inputs_.block(0,i,kInputSize,1) = input;
-//   }
-// }
 
 void NonlinearMpcController::setReferenceInputs() {
     // Check if the size of the references matches the expected size
@@ -224,6 +169,10 @@ void NonlinearMpcController::setReferenceInputs() {
         yaw_acc_ref_.size() != kSamples + 1 ||
         yaw_rate_ref_.size() != kSamples + 1) {
         // Handle error or throw an exception
+        std::cout << "set reference input fail"<<std::endl;
+        std::cout << acc_ref_.size()<<std::endl;
+        std::cout << yaw_acc_ref_.size()<<std::endl;
+        std::cout << yaw_rate_ref_.size()<<std::endl;
         return;
     }
 
@@ -231,7 +180,10 @@ void NonlinearMpcController::setReferenceInputs() {
 
     for (int i = 0; i < (kSamples + 1); ++i) {
         // Compute input.segment(3,1)
-        input.segment(3, 1) = vehicle_parameters_.mass_ * (acc_ref_.at(i) - g_);
+        Eigen::Vector3f thrust_W = vehicle_parameters_.mass_ * (acc_ref_.at(i) + g_);//g_:[0,0,9.8] //world frame thrust
+        // Currently calculate the desired thrust this way, but maybe not right
+        // input.segment(3, 1). = thrust_W[2];
+        input.segment(3, 1).setConstant(thrust_W[2]);
 
         // Compute omega_dot and omega
         Eigen::Vector3f omega_dot = Eigen::Vector3f(0, 0, yaw_acc_ref_.at(i));
@@ -243,12 +195,11 @@ void NonlinearMpcController::setReferenceInputs() {
         // Assign the computed input to reference_inputs_
         reference_inputs_.block(0, i, kInputSize, 1) = input;
         thrust_ref_.push_back(input(3, 0));
+        // std::cout << "thrust: " << input(3,0)<< std::endl;
         torque_ref_.push_back(input.segment(0, 3));
     }
+    // std::cout << "-------------------------"<<std::endl;
 }
-
-
-
 
 void NonlinearMpcController::setOdometry
   (const mav_msgs::EigenOdometry& odometry){
@@ -261,13 +212,6 @@ void NonlinearMpcController::setOdometry
     est_state.block(9,0,3,1) = odometry.angular_velocity_B.cast<float>();
   est_state_ = est_state;
 }
-
-// void NonlinearMpcController::setCommandFromPredictedResults(){
-//   command_torque_thrust_[0] = predicted_inputs_[0][0];
-//   command_torque_thrust_[1] = predicted_inputs_[1][0];
-//   command_torque_thrust_[2] = predicted_inputs_[2][0];
-//   command_torque_thrust_[3] = predicted_inputs_[3][0];
-// }
 
 void NonlinearMpcController::setCommandFromPredictedResults() {
     // Ensure that predicted_inputs_ has at least 4 columns

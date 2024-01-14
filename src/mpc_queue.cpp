@@ -4,16 +4,20 @@ namespace mav_control {
 //minimum_queue size是什么意思？应该取多大？
 //到底有没有必要做线性插值？
 //每次update queue是隔0.1s（sampling time）还是0.01s（controller frequency）
-MPCQueue::MPCQueue(int mpc_queue_size)
-    : mpc_queue_size_(mpc_queue_size),
-      maximum_queue_size_(10000),
+MPCQueue::MPCQueue(int mpc_reference_size)
+    : mpc_reference_size_(mpc_reference_size),
+      maximum_queue_size_(10000),//100s
       current_queue_size_(0),
       initialized_(false),
-      prediction_sampling_time_(0.1),
-      queue_dt_(0.01),
+      prediction_sampling_time_(1),
+      queue_dt_(0.01),//duration between adjacent trajectory point, in accordance with controller rate 100Hz
       queue_start_time_(0.0)
 {
-  minimum_queue_size_ = mpc_queue_size_*std::ceil(prediction_sampling_time_/queue_dt_);
+  minimum_queue_size_ = std::ceil(prediction_sampling_time_/queue_dt_)+1;
+  mpc_dt_ = prediction_sampling_time_/(mpc_reference_size_-1);//should be 0.1s
+  std::cout << "mpc_dt: "<< mpc_dt_ <<" (should be 0.1)"<< std::endl;
+  N_ = mpc_dt_/queue_dt_;//should be 10
+  std::cout << "N_: "<< N_ <<" (should be 10)"<< std::endl;
 }
 
 MPCQueue::~MPCQueue()
@@ -41,8 +45,7 @@ void MPCQueue::initializeQueue(const mav_msgs::EigenTrajectoryPoint& point,
 
 	queue_dt_ = controller_sampling_time;
 	prediction_sampling_time_ = prediction_sampling_time;
-	minimum_queue_size_ = mpc_queue_size_
-			* std::ceil(prediction_sampling_time_ / queue_dt_);
+	minimum_queue_size_ = std::ceil(prediction_sampling_time_ / queue_dt_)+1;
 
 	clearQueue();
 
@@ -58,8 +61,7 @@ void MPCQueue::initializeQueue(const mav_msgs::EigenOdometry& odometry,
 
 	queue_dt_ = controller_sampling_time;
 	prediction_sampling_time_ = prediction_sampling_time;
-	minimum_queue_size_ = mpc_queue_size_
-			* std::ceil(prediction_sampling_time_ / queue_dt_);
+	minimum_queue_size_ = std::ceil(prediction_sampling_time_ / queue_dt_)+1;
 
 	clearQueue();
 
@@ -75,15 +77,14 @@ void MPCQueue::initializeQueue(const mav_msgs::EigenOdometry& odometry,
 	initialized_ = true;
 }
 
-void MPCQueue::initializeQueue(float controller_sampling_time,
+void MPCQueue::initializeQueue(float queue_dt,
 		float prediction_sampling_time) {
 	if (initialized_)
 		return;
 
-	queue_dt_ = controller_sampling_time;
+	queue_dt_ = queue_dt;
 	prediction_sampling_time_ = prediction_sampling_time;
-	minimum_queue_size_ = mpc_queue_size_
-			* std::ceil(prediction_sampling_time_ / queue_dt_);
+	minimum_queue_size_ = std::ceil(prediction_sampling_time_ / queue_dt_)+1;
 
 	clearQueue();
 	mav_msgs::EigenTrajectoryPoint point;
@@ -109,7 +110,8 @@ void MPCQueue::insertReferenceTrajectory(const mav_msgs::EigenTrajectoryPointDeq
 {
 
   mav_msgs::EigenTrajectoryPointDeque interpolated_queue;
-  linearInterpolateTrajectory(queue, interpolated_queue);
+  // linearInterpolateTrajectory(queue, interpolated_queue);//Personally I think there is no need for interpolation
+  interpolated_queue = queue;//See if no interpolation will work
   std::cout << "finished interpolation and the size is: "<<std::endl;
   std::cout << interpolated_queue.size() <<std::endl;
   {
@@ -124,6 +126,7 @@ void MPCQueue::insertReferenceTrajectory(const mav_msgs::EigenTrajectoryPointDeq
     if (commanded_time_from_start <= queue_start_time_ || commanded_time_from_start <= 1e-4) {
       clearQueue();
       queue_start_time_ = commanded_time_from_start;
+      std::cout << "initial queue is cleared" << std::endl;
     } else {
       // Find where this insertion point belongs and clear the queue out up to that point.
       float queue_end_time = queue_start_time_ + current_queue_size_ * queue_dt_;
@@ -138,9 +141,11 @@ void MPCQueue::insertReferenceTrajectory(const mav_msgs::EigenTrajectoryPointDeq
       position_reference_.push_back(it->position_W.cast<float>());
       velocity_reference_.push_back(it->velocity_W.cast<float>());
       acceleration_reference_.push_back(it->acceleration_W.cast<float>());
+      // std::cout << "acceleration_reference: " << it->acceleration_W.cast<float>().z()<<std::endl;
       yaw_reference_.push_back(it->getYaw());
       yaw_rate_reference_.push_back(it->getYawRate());
       yaw_acc_reference_.push_back(it->getYawAcc());
+      // std::cout << "yaw acceleration_reference: " << it->getYawAcc()<<std::endl;
       current_queue_size_++;
     }
 
@@ -168,8 +173,8 @@ void MPCQueue::pushBackPoint(const mav_msgs::EigenTrajectoryPoint& point)
   if (current_queue_size_ < maximum_queue_size_) {
     position_reference_.push_back(point.position_W.cast<float>());
     velocity_reference_.push_back(point.velocity_W.cast<float>());
-    if(point.velocity_W.cast<float>().z()>0.5){
-      std::cout << "point_velocity value weird!" <<std::endl;
+    if(point.velocity_W.cast<float>().z()>20){
+      std::cout << "pushback: point_velocity value weird!" <<std::endl;
     }
     acceleration_reference_.push_back(point.acceleration_W.cast<float>());
     yaw_reference_.push_back(point.getYaw());
@@ -222,8 +227,8 @@ void MPCQueue::getLastPoint(mav_msgs::EigenTrajectoryPoint& point)
   if (current_queue_size_ > 0) {
     (point).position_W = position_reference_.back().cast<double>();
     (point).velocity_W = velocity_reference_.back().cast<double>();
-    if(velocity_reference_.back().cast<double>().z()>0.5){
-      std::cout << "point_velocity value weird!!!!!"<<std::endl;
+    if(velocity_reference_.back().cast<double>().z()>20){
+      std::cout << "get last point: point_velocity value weird!!!!!????"<<std::endl;
     }
     (point).acceleration_W = acceleration_reference_.back().cast<double>();
     (point).setFromYaw(yaw_reference_.back());
@@ -290,26 +295,16 @@ void MPCQueue::getQueue(Vector3fDeque& position_reference, Vector3fDeque& veloci
 	yaw_rate_reference.clear();
   yaw_acc_reference.clear();
 
-  int N = std::ceil(prediction_sampling_time_/queue_dt_);//10
-  // std::cout << "N: "<< N << std::endl;
-  // std::cout << "N*std::floor(current_queue_size_/N): "<<N*std::floor(current_queue_size_/N)<< std::endl;
-  // for(int i=0; i<N*std::floor(current_queue_size_/N); i=i+N){
-	//   position_reference.push_back(position_reference_.at(i));
-	//   velocity_reference.push_back(velocity_reference_.at(i));
-	//   acceleration_reference.push_back(acceleration_reference_.at(i));
-	//   yaw_reference.push_back(yaw_reference_.at(i));
-	//   yaw_rate_reference.push_back(yaw_rate_reference_.at(i));
-  //   yaw_acc_reference.push_back(yaw_acc_reference_.at(i));
-  // }
-  for(int i=0; i<=N; i++){
-	  position_reference.push_back(position_reference_.at(i));
-	  velocity_reference.push_back(velocity_reference_.at(i));
-	  acceleration_reference.push_back(acceleration_reference_.at(i));
-	  yaw_reference.push_back(yaw_reference_.at(i));
-	  yaw_rate_reference.push_back(yaw_rate_reference_.at(i));
-    yaw_acc_reference.push_back(yaw_acc_reference_.at(i));
+  for(int i=0; i<mpc_reference_size_; i++){
+	  position_reference.push_back(position_reference_.at(i*N_));
+	  velocity_reference.push_back(velocity_reference_.at(i*N_));
+	  acceleration_reference.push_back(acceleration_reference_.at(i*N_));
+	  yaw_reference.push_back(yaw_reference_.at(i*N_));
+	  yaw_rate_reference.push_back(yaw_rate_reference_.at(i*N_));
+    yaw_acc_reference.push_back(yaw_acc_reference_.at(i*N_));
   }
-  // std::cout << "size: "<< position_reference.size() << std::endl; 
+  // std::cout << "acceleration_reference_ after updateQueue: "<< acceleration_reference_.front() << std::endl; 
+  // std::cout << "position_reference_.size(): "<< position_reference_.size() << std::endl; 
 }
 
 void MPCQueue::linearInterpolateTrajectory(const mav_msgs::EigenTrajectoryPointDeque& input_queue,
