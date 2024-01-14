@@ -1,28 +1,3 @@
-# 下面是发送单个点，作为悬停指令
-# # weights for states
-# q_position: {x: 200, y: 200, z: 2000}
-# q_velocity: {x: 200, y: 200, z: 50}
-# # q_velocity: {x: 10, y: 10, z: 20}
-# q_attitude: {x: 50, y: 50, z: 50}
-# q_angular_rate: {x: 200, y: 200, z: 200}
-
-# # weights for inputs
-# r_thrust: 0.1
-# r_tau: {x: 0.1, y: 0.1, z: 0.1}
-
-# # limits
-# max_thrust: 18 # [N]
-# min_thrust: 0.1 # [N]
-# max_tau: {x: 0.1, y: 0.1, z: 0.1} # [Nm]
-
-# # time
-# controller_frequency: 100 # [Hz]
-# sampling_time: 0.01 # [s]
-# prediction_sampling_time: 0.1 # [s]
-# # 因为mpc_queue逻辑上不好修改了，所以只能先这样设置成0.01和0.1
-
-
-# 下面是发送一系列点，作为悬停指令
 # weights for states
 q_position: {x: 20, y: 20, z: 50} # x y 500 good
 q_velocity: {x: 10, y: 10, z: 10}
