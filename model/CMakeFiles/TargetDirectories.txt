@@ -1,0 +1,3 @@
+/home/scarlett/Workspaces/rotors_integration_ws/src/perception_nmpc/nmpc_controller/model/CMakeFiles/rebuild_cache.dir
+/home/scarlett/Workspaces/rotors_integration_ws/src/perception_nmpc/nmpc_controller/model/CMakeFiles/edit_cache.dir
+/home/scarlett/Workspaces/rotors_integration_ws/src/perception_nmpc/nmpc_controller/model/CMakeFiles/quadrotor_nmpc_codegen.dir
